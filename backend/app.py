@@ -72,7 +72,7 @@ async def translate_text(text: str, target_language: str, context: str = "") -> 
     async with httpx.AsyncClient(timeout=120) as client:
         response = await client.post(
             url,
-            params={"key": api_key},
+            headers={"x-goog-api-key": api_key},
             json={"contents": [{"parts": [{"text": prompt}]}],
                   "generationConfig": {"temperature": 0.2}},
         )
