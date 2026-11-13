@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Grantha — Book Translation Studio</title>
+<style>
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;color:#20231f;background:#f5f3ed}
+*{box-sizing:border-box}body{margin:0}.shell{max-width:1080px;margin:auto;padding:34px 22px 70px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:54px}.brand{font-family:Georgia,serif;font-size:30px;letter-spacing:-1px}.tag{font-size:12px;color:#697166;border:1px solid #d9ddd3;border-radius:30px;padding:8px 12px}
+.hero{max-width:720px;margin-bottom:30px}.eyebrow{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#697d57;font-weight:700}.hero h1{font-family:Georgia,serif;font-weight:500;font-size:clamp(38px,6vw,62px);line-height:1.04;letter-spacing:-2px;margin:14px 0}.hero p{font-size:16px;line-height:1.7;color:#667064;max-width:650px}
+.panel{background:#fff;border:1px solid #e3e5dd;border-radius:20px;padding:26px;box-shadow:0 12px 35px #252b1a0a}.grid{display:grid;grid-template-columns:1.25fr .75fr;gap:18px}.drop{border:1.5px dashed #b8c3ad;background:#fafbf8;border-radius:15px;padding:28px;text-align:center;min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center}.drop strong{font-size:16px}.drop span{font-size:12px;color:#81897b;margin-top:8px}.drop input{max-width:100%;margin-top:16px}
+label{display:block;font-size:12px;font-weight:700;color:#697166;margin:0 0 9px}select,input{font:inherit}select{width:100%;padding:13px;border:1px solid #dfe3d9;border-radius:10px;background:white;margin-bottom:18px}
+button{border:0;border-radius:11px;background:#334b2c;color:white;padding:14px 20px;font-weight:700;cursor:pointer;width:100%}button:disabled{opacity:.55;cursor:wait}
+.note{font-size:12px;color:#858c80;line-height:1.6;margin-top:15px}.status{margin-top:20px;display:none}.bar{height:8px;background:#edf0e9;border-radius:10px;overflow:hidden;margin:12px 0}.bar div{height:100%;width:0;background:#789367;transition:width .25s}.meta{display:flex;justify-content:space-between;font-size:12px;color:#697166}.results{margin-top:20px;display:grid;gap:14px}.result{background:#fbfcf9;border:1px solid #e7eae2;border-radius:12px;padding:16px}.result h3{font:600 13px Inter, sans-serif;color:#66745b}.result p{white-space:pre-wrap;line-height:1.7;font-size:14px}.error{color:#a43b32}.foot{font-size:11px;color:#8b9186;margin-top:28px;line-height:1.6}
+@media(max-width:720px){.grid{grid-template-columns:1fr}header{margin-bottom:38px}.panel{padding:18px}}
+</style></head>
+<body><main class="shell">
+<header><div class="brand">Grantha<span style="color:#82936f">.</span></div><div class="tag">EARLY ACCESS · 0.1</div></header>
+<section class="hero"><div class="eyebrow">A thoughtful way across languages</div><h1>Books deserve to be understood in every language.</h1><p>Translate long-form books while preserving their meaning, structure and continuity. Begin with Sanskrit to Telugu; other language pairs can follow.</p></section>
+<section class="panel">
+<div class="grid">
+<div><label>BOOK FILE</label><div class="drop"><strong>Choose a book to begin</strong><span>Digital PDF, DOCX, EPUB or TXT · Up to 40 MB</span><input id="file" type="file" accept=".pdf,.docx,.epub,.txt"></div></div>
+<div><label>TRANSLATE INTO</label><select id="target"><option>Telugu</option><option>English</option><option>Hindi</option><option>Tamil</option><option>Kannada</option><option>Malayalam</option></select><label>TRANSLATION STYLE</label><select id="style" disabled><option>Contextual and faithful (default)</option></select><button id="start">Start translation</button><p class="note">Your book is sent to the configured AI service for translation. Do not upload confidential or copyrighted material unless you have the rights and have reviewed the provider's data-use terms.</p></div>
+</div>
+<div class="status" id="status"><div class="meta"><strong id="state">Preparing…</strong><span id="percent">0%</span></div><div class="bar"><div id="fill"></div></div><div class="meta"><span id="pages">Waiting for job</span><span id="jobid"></span></div><div id="results" class="results"></div></div>
+</section>
+<p class="foot">Grantha is an early technical preview. Scanned-PDF OCR, layout/image preservation, editable review, durable job recovery and export are not implemented yet. Translation quality must be reviewed, especially for Sanskrit literature and technical texts.</p>
+</main>
+<script>
+const $=id=>document.getElementById(id);let timer=null;
+$("start").addEventListener("click",async()=>{
+ const file=$("file").files[0];if(!file){alert("Choose a book file first.");return}
+ $("start").disabled=true;$("status").style.display="block";$("results").innerHTML="";$("state").textContent="Uploading and extracting text…";
+ const body=new FormData();body.append("file",file);body.append("target_language",$("target").value);
+ try{
+  const res=await fetch("/api/jobs",{method:"POST",body});const data=await res.json();if(!res.ok)throw new Error(data.detail||"Upload failed");
+  $("jobid").textContent=data.job_id.slice(0,8);$("pages").textContent="0 of "+data.total_pages+" pages";
+  if(timer)clearInterval(timer);timer=setInterval(()=>poll(data.job_id),1800);poll(data.job_id);
+ }catch(e){$("state").textContent=e.message;$("state").className="error";$("start").disabled=false}
+});
+async function poll(id){
+ try{const r=await fetch("/api/jobs/"+id);const j=await r.json();if(!r.ok)throw new Error(j.detail||"Could not read job");
+ $("state").textContent=j.status==="completed"?"Translation complete":j.status==="failed"?"Translation stopped":j.status==="translating"?"Translating page by page…":"Queued";
+ $("percent").textContent=j.progress+"%";$("fill").style.width=j.progress+"%";$("pages").textContent=j.completed+" of "+j.total+" pages";
+ $("results").innerHTML=j.results.map(x=>'<article class="result"><h3>PAGE '+x.page+' · TELUGU TRANSLATION</h3><p>'+escapeHtml(x.translation)+'</p></article>').join("");
+ if(j.status==="completed"||j.status==="failed"){clearInterval(timer);$("start").disabled=false;if(j.error){$("state").textContent=j.error;$("state").className="error"}}
+ }catch(e){$("state").textContent=e.message;$("state").className="error";clearInterval(timer);$("start").disabled=false}
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+</script></body></html>
