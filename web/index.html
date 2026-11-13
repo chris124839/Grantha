@@ -42,7 +42,7 @@ async function poll(id){
  try{const r=await fetch("/api/jobs/"+id);const j=await r.json();if(!r.ok)throw new Error(j.detail||"Could not read job");
  $("state").textContent=j.status==="completed"?"Translation complete":j.status==="failed"?"Translation stopped":j.status==="translating"?"Translating page by page…":"Queued";
  $("percent").textContent=j.progress+"%";$("fill").style.width=j.progress+"%";$("pages").textContent=j.completed+" of "+j.total+" pages";
- $("results").innerHTML=j.results.map(x=>'<article class="result"><h3>PAGE '+x.page+' · TELUGU TRANSLATION</h3><p>'+escapeHtml(x.translation)+'</p></article>').join("");
+ $("results").innerHTML=j.results.map(x=>'<article class="result"><h3>PAGE '+x.page+' · '+escapeHtml(j.target_language.toUpperCase())+' TRANSLATION</h3><p>'+escapeHtml(x.translation)+'</p></article>').join("");
  if(j.status==="completed"||j.status==="failed"){clearInterval(timer);$("start").disabled=false;if(j.error){$("state").textContent=j.error;$("state").className="error"}}
  }catch(e){$("state").textContent=e.message;$("state").className="error";clearInterval(timer);$("start").disabled=false}
 }
